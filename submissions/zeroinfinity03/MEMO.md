@@ -1,7 +1,7 @@
 # MIB Doc Challenge — Technical Memo
 
-**126.15 / 150** on the 1,000 labelled training packets: 44.37 extraction,
-65.44 classification, 16.34 calibration, no missing cases, 10 catastrophic
+**126.48 / 150** on the 1,000 labelled training packets: 44.69 extraction,
+65.44 classification, 16.35 calibration, no missing cases, 10 catastrophic
 false approvals. Five deterministic stages, CPU only, offline, no LLM.
 
 ## Approach
@@ -182,11 +182,22 @@ a slightly-too-tall detector box garbled `Observed flags: biohazard_red` into
 
 ## Runtime
 
-The 1,000-packet OCR pass takes 67 minutes on three workers, against 113 for the
-previous Paddle build. Worker memory is 0.2–0.6 GiB rather than ~2 GiB, so the
-`--memory 8g` ceiling is no longer close. Models are 30 MB against the previous
-133 MB.
+The full 5,000-packet validation set runs end to end in **5 h 08 m — 3.70
+seconds per PDF** against the 6-second budget and the 8 h 20 m hard limit,
+on three workers. Step 1 accounts for two minutes of that; step 2 for 308.
+The validator reports 5,000 records and no missing case IDs.
 
-That headroom matters more than the score did. The previous submission ran the
-5,000-packet validation set in 8 h 19 m against an 8 h 20 m cap — sixty seconds
-of margin, on a judge machine we do not control.
+The previous submission left sixty seconds of margin on that limit. This one
+leaves three hours, which matters more than it sounds: the limit is measured
+on a machine we do not control, and a scoring host even slightly slower than
+the one used here would have overrun the old pipeline.
+
+Worker memory holds between 6 and 7 GiB of resident set across the three
+processes, and much of that is the ONNX weights counted once per process
+though mapped once; the same image completed a run under `--memory 8g`.
+Models are 30 MB against the previous 133 MB, and the image is 335 MB built
+for x86_64 (1.11 GB for arm64, where the wheels are larger).
+
+Both architectures were built and run. Removing PaddlePaddle removed the
+`--platform=linux/amd64` pin it forced — it ships no linux-aarch64 wheel —
+so the image is now built natively for whatever the scoring host is.
